@@ -1,0 +1,49 @@
+## ==============================================================================
+## AeroFence .gitignore
+## Standard .NET 9 / WPF / Visual Studio / JetBrains / VS Code ignores
+## ==============================================================================
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+dist/
+artifacts/
+*.exe
+*.dll
+*.pdb
+*.msi
+*.appx
+!src/AeroFence.Installer/Resources/AeroFence_Payload.zip
+
+# Visual Studio & Windows User State
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.dbmdl
+*.jfm
+[Tt]est[Rr]esults/
+
+# Visual Studio Code & JetBrains Rider
+.vscode/
+.idea/
+*.DotSettings.user
+
+# Local Runtime Data & Logs
+fences.json
+config.json
+*.log
+crash.log
+*.tmp
+*.bak
+
+# Temporary / Legacy Exploration Folders (Workspace specific)
+rea-main/
+rea-main.zip
+Test_PRPL/
+top_20_ai_skills_antigravity.md
+AeroFence_Setup.exe
+AeroFence_Installer.exe

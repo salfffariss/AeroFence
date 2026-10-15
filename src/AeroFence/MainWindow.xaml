@@ -1,0 +1,690 @@
+<Window x:Class="AeroFence.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:AeroFence.ViewModels"
+        xmlns:models="clr-namespace:AeroFence.Models"
+        xmlns:views="clr-namespace:AeroFence.Views"
+        xmlns:converters="clr-namespace:AeroFence.Converters"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Height="380" Width="560"
+        MinWidth="180" MinHeight="120"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        FontFamily="{StaticResource FluentFontFamily}"
+        ShowInTaskbar="False"
+        Icon="Assets/app.ico"
+        AllowDrop="True"
+        DragEnter="Window_DragEnter"
+        DragOver="Window_DragOver">
+
+    <Window.Resources>
+        <converters:PathToIconConverter x:Key="PathToIconConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+
+    <!-- Outer Fence Container with rounded corners and authentic frosted acrylic blur -->
+    <Border x:Name="OuterBorder"
+            Background="{StaticResource AcrylicTintBrush}"
+            BorderBrush="{StaticResource AcrylicBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            SnapsToDevicePixels="True">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- Row 0: Custom Chrome TitleBar (32px) -->
+                <RowDefinition Height="32" />
+                <!-- Row 1: Body Container (Tabs + Items) -->
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Custom TitleBar Header (Compact 32px) -->
+            <Grid x:Name="TitleBar" 
+                  Grid.Row="0"
+                  Height="32"
+                  Background="Transparent"
+                  AllowDrop="True"
+                  DragEnter="TitleBar_DragEnter"
+                  DragOver="TitleBar_DragOver"
+                  Drop="TitleBar_Drop"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+                  MouseMove="TitleBar_MouseMove"
+                  MouseLeftButtonUp="TitleBar_MouseLeftButtonUp"
+                  LostMouseCapture="TitleBar_LostMouseCapture">
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Rename Fence" Click="RenameFenceMenuItem_Click">
+                            <MenuItem.Icon>
+                                <TextBlock Text="✏️" FontSize="12" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator Background="#22FFFFFF" Margin="4,2" />
+                        <MenuItem Header="Add New Tab" Command="{Binding AddNewTabCommand}">
+                            <MenuItem.Icon>
+                                <TextBlock Text="➕" FontSize="12" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+
+                <!-- Left: App Identity (⚡) & Settings (⚙️) -->
+                <StackPanel x:Name="LeftHeaderControls"
+                            HorizontalAlignment="Left"
+                            Orientation="Horizontal" 
+                            VerticalAlignment="Center" 
+                            Margin="10,0,0,0">
+                    <TextBlock Text="⚡" 
+                               FontSize="12" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,6,0"
+                               Opacity="0.75" />
+
+                    <!-- Settings Button -->
+                    <Button x:Name="SettingsButton"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="Fence Settings"
+                            Click="SettingsButton_Click">
+                        <TextBlock Text="⚙️" FontSize="11" />
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <!-- View / Icon Size Submenu -->
+                                <MenuItem Header="View">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📐" FontSize="12" />
+                                    </MenuItem.Icon>
+                                    <MenuItem Header="Small icons"
+                                              Command="{Binding SetIconSizeCommand}"
+                                              CommandParameter="{x:Static models:IconSizeOption.Small}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                       Visibility="{Binding IsSmallIconSize, Converter={StaticResource BoolToVis}}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Medium icons"
+                                              Command="{Binding SetIconSizeCommand}"
+                                              CommandParameter="{x:Static models:IconSizeOption.Medium}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                       Visibility="{Binding IsMediumIconSize, Converter={StaticResource BoolToVis}}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Large icons"
+                                              Command="{Binding SetIconSizeCommand}"
+                                              CommandParameter="{x:Static models:IconSizeOption.Large}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                       Visibility="{Binding IsLargeIconSize, Converter={StaticResource BoolToVis}}" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuItem>
+
+                                <!-- Sort Items Submenu -->
+                                <MenuItem Header="Sort by">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="🔀" FontSize="12" />
+                                    </MenuItem.Icon>
+                                    <MenuItem Header="Name (A to Z)" Command="{Binding SortByNameCommand}" />
+                                    <MenuItem Header="Most Played" Command="{Binding SortByPlaytimeCommand}" />
+                                    <MenuItem Header="Launch Count" Command="{Binding SortByLaunchCountCommand}" />
+                                </MenuItem>
+
+                                <Separator Background="#22FFFFFF" Margin="4,2" />
+
+                                <!-- Acrylic Blur Toggle -->
+                                <MenuItem Header="Acrylic Blur"
+                                          Click="AcrylicToggle_Click">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                   Visibility="{Binding Config.EnableAcrylic, Converter={StaticResource BoolToVis}}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+
+                                <!-- Desktop Attachment Toggle (Wallpaper layer) -->
+                                <MenuItem Header="Pin to Desktop (Wallpaper layer)"
+                                          Click="DesktopPinToggle_Click">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                   Visibility="{Binding Config.AttachToDesktop, Converter={StaticResource BoolToVis}}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+
+                                <!-- Add New Tab Shortcut -->
+                                <MenuItem Header="Add New Tab"
+                                          Command="{Binding AddNewTabCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="➕" FontSize="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Add Folder Portal Tab..."
+                                          Command="{Binding AddFolderPortalTabCommand}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="📁" FontSize="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+
+                                <!-- Settings Dashboard -->
+                                <Separator Background="#22FFFFFF" Margin="4,2" />
+                                <MenuItem Header="AeroFence Settings..."
+                                          Click="OpenSettings_Click">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="⚙️" FontSize="12" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                </StackPanel>
+
+                <!-- Center: Pure Dead-Centered Title with Double-Click Rename & Up-Arrow Navigation in Folder Portal -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- Folder Portal Navigate Up Button (↑) -->
+                    <Button x:Name="NavigateUpButton"
+                            Command="{Binding NavigateUpCommand}"
+                            Visibility="{Binding IsFolderPortal, Converter={StaticResource BoolToVis}}"
+                            IsEnabled="{Binding CanNavigateUp}"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="Up to Parent Folder (↑)"
+                            Width="24" Height="24" Margin="0,0,4,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="↑" FontSize="15" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                    </Button>
+
+                    <Grid VerticalAlignment="Center">
+                        <!-- Display Mode: TextBlock with hover effect & context menu -->
+                        <Border x:Name="TitleContainerBorder"
+                                CornerRadius="4"
+                                Padding="8,3"
+                                Background="Transparent"
+                                Cursor="Hand"
+                                MouseLeftButtonDown="TitleTextBlock_MouseLeftButtonDown"
+                                Visibility="{Binding IsRenamingTitle, Converter={StaticResource InverseBoolToVis}}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#18FFFFFF" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Rename Fence" Click="RenameFenceMenuItem_Click">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="✏️" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Add New Tab" Command="{Binding AddNewTabCommand}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="➕" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Add Folder Portal Tab..." Command="{Binding AddFolderPortalTabCommand}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="📁" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+
+                                    <!-- Folder Portal Menu Options -->
+                                    <Separator Background="#22FFFFFF" Margin="4,2" />
+                                    <MenuItem Header="Convert to Folder Portal..." 
+                                              Command="{Binding ConvertToFolderPortalCommand}"
+                                              Visibility="{Binding IsFolderPortal, Converter={StaticResource InverseBoolToVis}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="📁" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Change Portal Folder..." 
+                                              Command="{Binding ConvertToFolderPortalCommand}"
+                                              Visibility="{Binding IsFolderPortal, Converter={StaticResource BoolToVis}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="📁" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open Folder in File Explorer" 
+                                              Command="{Binding OpenFolderInExplorerCommand}"
+                                              Visibility="{Binding IsFolderPortal, Converter={StaticResource BoolToVis}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="📂" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Convert to Standard Fence" 
+                                              Command="{Binding ConvertToStandardFenceCommand}"
+                                              Visibility="{Binding IsFolderPortal, Converter={StaticResource BoolToVis}}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🔄" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+
+                                    <Separator Background="#22FFFFFF" Margin="4,2" />
+                                    <MenuItem Header="AeroFence Settings..." Click="OpenSettings_Click">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="⚙️" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator Background="#22FFFFFF" Margin="4,2" />
+                                    <MenuItem Header="Delete this Fence" Command="{Binding DeleteFenceCommand}">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🗑️" FontSize="12" />
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </Border.ContextMenu>
+                            <TextBlock Text="{Binding Title}" 
+                                       FontSize="12" 
+                                       FontWeight="SemiBold" 
+                                       Foreground="{StaticResource TextPrimaryBrush}" 
+                                       VerticalAlignment="Center" />
+                        </Border>
+
+                        <!-- Inline Rename Mode: TextBox -->
+                        <TextBox x:Name="TitleRenameTextBox"
+                                 Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                 Visibility="{Binding IsRenamingTitle, Converter={StaticResource BoolToVis}}"
+                                 FontSize="12"
+                                 FontWeight="SemiBold"
+                                 Background="#40000000"
+                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                 BorderBrush="{StaticResource AccentBrush}"
+                                 BorderThickness="1"
+                                 Padding="6,2"
+                                 MinWidth="100"
+                                 TextAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 KeyDown="TitleRenameTextBox_KeyDown"
+                                 LostFocus="TitleRenameTextBox_LostFocus"
+                                 IsVisibleChanged="TitleRenameTextBox_IsVisibleChanged" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Right: Window Action Controls (Pin, Roll-up, Close) -->
+                <StackPanel x:Name="RightHeaderControls"
+                            HorizontalAlignment="Right" 
+                            Orientation="Horizontal" 
+                            VerticalAlignment="Center" 
+                            Margin="0,0,6,0">
+                    
+                    <!-- Pin / Auto-Rollup Toggle Button -->
+                    <Button x:Name="PinButton"
+                            Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="Pin Fence (Keep Open / Auto-Rollup on Exit)"
+                            Click="PinButton_Click"
+                            Margin="0,0,2,0">
+                        <TextBlock x:Name="PinIcon" Text="📌" FontSize="11" />
+                    </Button>
+
+                    <!-- Roll-up Toggle Button -->
+                    <Button Style="{StaticResource TitleBarButtonStyle}"
+                            ToolTip="Toggle Roll-up"
+                            Click="RollUpButton_Click"
+                            Margin="0,0,2,0">
+                        <TextBlock x:Name="RollUpIcon" Text="🔼" FontSize="11" />
+                    </Button>
+
+                    <!-- Close / Delete Button -->
+                    <Button Style="{StaticResource TitleBarCloseButtonStyle}"
+                            ToolTip="Delete this Fence"
+                            Click="CloseButton_Click">
+                        <TextBlock Text="✕" FontSize="12" />
+                    </Button>
+                </StackPanel>
+
+                <!-- Bottom separator line beneath title bar -->
+                <Border x:Name="TitleSeparator"
+                        VerticalAlignment="Bottom"
+                        Height="1"
+                        Background="#15FFFFFF" />
+            </Grid>
+
+            <!-- Main Body Container: Tabs + Canvas Items (Collapses when rolled up) -->
+            <Grid x:Name="BodyContainer" Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <!-- Row 0: Tab Bar Strip (Auto-collapses when in Folder Portal mode) -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Row 1: Tab Items Canvas Area -->
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Tab Bar Strip (Auto-collapses only when single-tab Folder Portal) -->
+                <Border Grid.Row="0" 
+                        Background="#0DFFFFFF"
+                        BorderBrush="#18FFFFFF"
+                        BorderThickness="0,0,0,1"
+                        Visibility="{Binding ShowTabBar, Converter={StaticResource BoolToVis}}">
+                    <ScrollViewer x:Name="TabScrollViewer"
+                                  HorizontalScrollBarVisibility="Hidden" 
+                                  VerticalScrollBarVisibility="Disabled"
+                                  Focusable="False"
+                                  PreviewMouseWheel="TabScrollViewer_PreviewMouseWheel">
+                        <StackPanel Orientation="Horizontal" Margin="8,4,8,4">
+                            <!-- Dynamic Tabs List from ViewModel -->
+                            <ItemsControl ItemsSource="{Binding Tabs}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:TabModel}">
+                                        <Button Margin="0,0,4,0"
+                                                Height="26"
+                                                Padding="10,0"
+                                                Cursor="Hand"
+                                                AllowDrop="True"
+                                                MouseDoubleClick="TabButton_MouseDoubleClick"
+                                                DragEnter="TabButton_DragEnter"
+                                                DragOver="TabButton_DragOver"
+                                                Drop="TabButton_Drop"
+                                                Command="{Binding DataContext.SelectTabCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                                                    <Setter Property="BorderThickness" Value="0" />
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border x:Name="tabBorder"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        CornerRadius="5"
+                                                                        Padding="{TemplateBinding Padding}">
+                                                                    <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="tabBorder" Property="Background" Value="#1EFFFFFF" />
+                                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <!-- Highlight active tab -->
+                                                    <Style.Triggers>
+                                                        <DataTrigger Value="True">
+                                                            <DataTrigger.Binding>
+                                                                <MultiBinding Converter="{x:Null}">
+                                                                    <!-- Helper to highlight if SelectedTab == this tab -->
+                                                                </MultiBinding>
+                                                            </DataTrigger.Binding>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+
+                                            <!-- Context Menu for Tab Management -->
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <!-- Rename Tab -->
+                                                    <MenuItem Header="Rename Tab" 
+                                                              Click="RenameTabMenuItem_Click">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Text="✏️" FontSize="12" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+
+                                                    <!-- Change Icon Submenu -->
+                                                    <MenuItem Header="Change Icon">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Text="🎨" FontSize="12" />
+                                                        </MenuItem.Icon>
+                                                        <MenuItem Header="🎮 Games" Tag="🎮" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="🛠️ Tools" Tag="🛠️" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="💻 Coding / Dev" Tag="💻" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="🎨 Design / Art" Tag="🎨" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="🌐 Web / Browser" Tag="🌐" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="🎵 Music / Audio" Tag="🎵" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="🎬 Video / Movies" Tag="🎬" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="💼 Work / Office" Tag="💼" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="📁 Documents" Tag="📁" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="⭐ Favorites" Tag="⭐" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="🚀 Launcher" Tag="🚀" Click="ChangeTabIconMenuItem_Click" />
+                                                        <MenuItem Header="💬 Chat / Social" Tag="💬" Click="ChangeTabIconMenuItem_Click" />
+                                                    </MenuItem>
+
+                                                    <Separator Background="#22FFFFFF" Margin="4,2" />
+
+                                                    <!-- Add Tabs -->
+                                                    <MenuItem Header="Add New Tab" 
+                                                              Command="{Binding DataContext.AddNewTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Text="➕" FontSize="12" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                    <MenuItem Header="Add Folder Portal Tab..." 
+                                                              Command="{Binding DataContext.AddFolderPortalTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Text="📁" FontSize="12" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+
+                                                    <Separator Background="#22FFFFFF" Margin="4,2" />
+
+                                                    <!-- Delete Tab -->
+                                                    <MenuItem Header="Delete Tab" 
+                                                              Command="{Binding DataContext.DeleteTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                        <MenuItem.Icon>
+                                                            <TextBlock Text="🗑️" FontSize="12" />
+                                                        </MenuItem.Icon>
+                                                    </MenuItem>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+
+                                            <Grid VerticalAlignment="Center">
+                                                <!-- View Mode: Icon + Text -->
+                                                <StackPanel Orientation="Horizontal" 
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVis}}">
+                                                    <TextBlock Text="{Binding IconGlyph}" Margin="0,0,6,0" FontSize="12" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" />
+                                                </StackPanel>
+
+                                                <!-- Inline Rename Mode: TextBox -->
+                                                <TextBox x:Name="RenameTextBox"
+                                                         Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                         Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}"
+                                                         FontSize="12"
+                                                         FontWeight="Medium"
+                                                         Background="#40000000"
+                                                         Foreground="{StaticResource TextPrimaryBrush}"
+                                                         BorderBrush="{StaticResource AccentBrush}"
+                                                         BorderThickness="1"
+                                                         Padding="4,1"
+                                                         MinWidth="65"
+                                                         VerticalAlignment="Center"
+                                                         KeyDown="RenameTextBox_KeyDown"
+                                                         LostFocus="RenameTextBox_LostFocus"
+                                                         IsVisibleChanged="RenameTextBox_IsVisibleChanged" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Add New Tab Button (+) -->
+                            <Button Width="26" Height="26"
+                                    ToolTip="Add New Tab (Right-click for Folder Portal)"
+                                    Command="{Binding AddNewTabCommand}"
+                                    Cursor="Hand"
+                                    Background="Transparent"
+                                    Foreground="{StaticResource TextSecondaryBrush}"
+                                    BorderThickness="0">
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Add Shortcut Tab" Command="{Binding AddNewTabCommand}">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="➕" FontSize="12" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="Add Folder Portal Tab..." Command="{Binding AddFolderPortalTabCommand}">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="📁" FontSize="12" />
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="addBorder" Background="{TemplateBinding Background}" CornerRadius="5">
+                                            <TextBlock Text="+" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="addBorder" Property="Background" Value="#22FFFFFF" />
+                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- Items Dynamic Flow Grid (Auto-Reflow like Fences) -->
+                <Grid Grid.Row="1" Margin="8,6,8,8"
+                      Background="Transparent"
+                      AllowDrop="True"
+                      DragEnter="Canvas_DragEnter"
+                      DragOver="Canvas_DragOver"
+                      DragLeave="Canvas_DragLeave"
+                      Drop="Canvas_Drop"
+                      MouseLeftButtonDown="Canvas_MouseLeftButtonDown">
+
+                    <!-- Canvas Right-Click Context Menu -->
+                    <Grid.ContextMenu>
+                        <ContextMenu>
+                            <!-- View / Icon Size Submenu -->
+                            <MenuItem Header="View">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="📐" FontSize="12" />
+                                </MenuItem.Icon>
+                                <MenuItem Header="Small icons"
+                                          Command="{Binding SetIconSizeCommand}"
+                                          CommandParameter="{x:Static models:IconSizeOption.Small}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                   Visibility="{Binding IsSmallIconSize, Converter={StaticResource BoolToVis}}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Medium icons"
+                                          Command="{Binding SetIconSizeCommand}"
+                                          CommandParameter="{x:Static models:IconSizeOption.Medium}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                   Visibility="{Binding IsMediumIconSize, Converter={StaticResource BoolToVis}}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Large icons"
+                                          Command="{Binding SetIconSizeCommand}"
+                                          CommandParameter="{x:Static models:IconSizeOption.Large}">
+                                    <MenuItem.Icon>
+                                        <TextBlock Text="•" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                   Visibility="{Binding IsLargeIconSize, Converter={StaticResource BoolToVis}}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </MenuItem>
+
+                            <!-- Sort Items Submenu -->
+                            <MenuItem Header="Sort by">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="🔀" FontSize="12" />
+                                </MenuItem.Icon>
+                                <MenuItem Header="Name (A to Z)" Command="{Binding SortByNameCommand}" />
+                                <MenuItem Header="Most Played" Command="{Binding SortByPlaytimeCommand}" />
+                                <MenuItem Header="Launch Count" Command="{Binding SortByLaunchCountCommand}" />
+                            </MenuItem>
+
+                            <Separator Background="#22FFFFFF" Margin="4,2" />
+
+                            <!-- Open in Terminal -->
+                            <MenuItem Header="Open in Terminal"
+                                      Command="{Binding OpenInTerminalCommand}">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="💻" FontSize="12" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+
+                            <!-- Add New Tab Shortcut -->
+                            <MenuItem Header="Add New Tab"
+                                      Command="{Binding AddNewTabCommand}">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="➕" FontSize="12" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </Grid.ContextMenu>
+
+                    <ScrollViewer x:Name="ItemsScrollViewer"
+                                  HorizontalScrollBarVisibility="Disabled" 
+                                  VerticalScrollBarVisibility="Auto"
+                                  Focusable="False">
+                        <!-- Items display for active tab -->
+                        <ItemsControl ItemsSource="{Binding CurrentItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" Margin="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Margin" Value="3,4" />
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:ItemModel}">
+                                    <views:ItemCardView />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Type-to-Filter Instant Search Pill -->
+                    <Border x:Name="SearchOverlayPill"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Top"
+                            Margin="0,8,0,0"
+                            Background="#EB1A1D24"
+                            BorderBrush="{StaticResource AccentBrush}"
+                            BorderThickness="1"
+                            CornerRadius="13"
+                            Padding="10,3,6,3"
+                            Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}"
+                            Panel.ZIndex="100">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.45" />
+                        </Border.Effect>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="🔍" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.8" />
+                            <TextBlock Text="{Binding SearchQuery}" 
+                                       FontSize="12" FontWeight="SemiBold" 
+                                       Foreground="{StaticResource TextPrimaryBrush}" 
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding MatchCountText}" 
+                                       FontSize="11" 
+                                       Foreground="{StaticResource TextSecondaryBrush}" 
+                                       Margin="8,0,6,0" 
+                                       VerticalAlignment="Center" />
+                            <Button Content="✕" 
+                                    FontSize="10" 
+                                    Width="18" Height="18" 
+                                    Padding="0" Margin="2,0,0,0"
+                                    Cursor="Hand"
+                                    ToolTip="Clear Search (Esc)"
+                                    Command="{Binding ClearSearchCommand}"
+                                    Style="{StaticResource TitleBarButtonStyle}" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
